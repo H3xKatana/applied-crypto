@@ -1,7 +1,7 @@
 import numpy as np
 
 
-class ToyCipher:
+class DemoCipher:
     """
     Simplified toy cipher for learning differential cryptanalysis.
     8-bit block, 10-bit key, 2 rounds with Feistel structure

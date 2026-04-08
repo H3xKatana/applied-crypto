@@ -1,6 +1,6 @@
 # Differential Cryptanalysis Attack Implementation
 
-A comprehensive educational implementation demonstrating differential cryptanalysis on custom toy ciphers and simplified DES.
+A comprehensive educational implementation demonstrating differential cryptanalysis on a demo cipher and simplified DES.
 
 ## Quick Start
 
@@ -9,7 +9,7 @@ cd differential-attack
 python3 visualize.py
 ```
 
-This generates:
+This generates visualizations in `images/`:
 - `differential-dist.png` - Differential distribution visualization
 - `attack-success.png` - Attack effectiveness by pair count
 - `characteristic.png` - Differential characteristic visualization
@@ -36,17 +36,18 @@ This generates:
 
 ```
 differential-attack/
-├── toy_cipher.py    # Custom 8-bit toy cipher (educational)
-├── des.py           # Simplified DES (16-bit key)
-├── pairs.py         # Differential pair generator
-├── attack.py        # Differential attack implementation
-├── visualize.py     # Beautiful visualizations
-└── README.md        # This file
+├── demo.py            # Demo cipher (8-bit, educational)
+├── des.py             # Simplified DES (16-bit key)
+├── pairs.py           # Differential pair generator
+├── attack.py          # Differential attack implementation
+├── visualize.py       # Beautiful visualizations
+├── images/            # Generated visualizations
+└── README.md          # This file
 ```
 
 ## Cipher Specifications
 
-### ToyCipher (toy_cipher.py)
+### DemoCipher (demo.py)
 
 - **Block size**: 8 bits
 - **Key size**: 10 bits
@@ -76,7 +77,7 @@ Ciphertext (8 bits)
 
 ### Step 1: Choose a Differential
 
-For our toy cipher, ΔP = 0x80 works well:
+For our demo cipher, ΔP = 0x80 works well:
 - High probability of propagating through rounds
 - Produces distinguishable output patterns
 
@@ -85,7 +86,7 @@ For our toy cipher, ΔP = 0x80 works well:
 ```python
 from pairs import generate_differential_pairs
 
-cipher = ToyCipher(key=0x3FF)
+cipher = DemoCipher(key=0x3FF)
 pairs = generate_differential_pairs(cipher, num_pairs=100, delta=0x80)
 ```
 
@@ -110,25 +111,25 @@ recovered_key = differential_attack(cipher, num_pairs=50)
 ```python
 from attack import measure_attack_effectiveness
 
-results = measure_attack_effectiveness(ToyCipher, test_key, num_trials=10)
+results = measure_attack_effectiveness(DemoCipher, test_key, num_trials=10)
 # Returns success rate for different pair counts
 ```
 
 ## Visualizations
 
-![Differential Distribution](differential-dist.png)
+![Differential Distribution](images/differential-dist.png)
 ### differential-dist.png
 Shows how different input differences (0x01, 0x40, 0x80) propagate to output differences. The distribution shows which differences are more predictable.
 
-![Attack Success](attack-success.png)
+![Attack Success](images/attack-success.png)
 ### attack-success.png
 Plots success rate vs. number of plaintext pairs. Shows how many pairs needed for reliable key recovery.
 
-![Differential Characteristic](characteristic.png)
+![Differential Characteristic](images/characteristic.png)
 ### characteristic.png
 Visualizes the differential characteristic - how the input difference transforms through the cipher rounds.
 
-![Attack Dashboard](attack-dashboard.png)
+![Attack Dashboard](images/attack-dashboard.png)
 ### attack-dashboard.png
 Complete analysis with:
 - Key search space visualization
@@ -160,19 +161,19 @@ python3 visualize.py
 
 ### Custom Attack
 ```python
-from toy_cipher import ToyCipher
+from demo import DemoCipher
 from attack import differential_attack, measure_attack_effectiveness
 
 # Test on random key
 key = 0x2AB
-cipher = ToyCipher(key)
+cipher = DemoCipher(key)
 
 # Run attack
 recovered = differential_attack(cipher, num_pairs=50)
 print(f"Original: 0x{key:03X}, Recovered: 0x{recovered:03X}")
 
 # Measure effectiveness
-results = measure_attack_effectiveness(ToyCipher, key, num_trials=20)
+results = measure_attack_effectiveness(DemoCipher, key, num_trials=20)
 print(results)
 ```
 

@@ -4,7 +4,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import numpy as np
-from toy_cipher import ToyCipher
+from demo import DemoCipher
 from des import SimplifiedDES
 
 
@@ -13,7 +13,7 @@ def generate_differential_pairs(cipher, num_pairs=100, delta=None):
     Generate plaintext pairs with controlled XOR difference.
 
     Args:
-        cipher: Cipher instance (ToyCipher or SimplifiedDES)
+        cipher: Cipher instance (DemoCipher or SimplifiedDES)
         num_pairs: Number of pairs to generate
         delta: XOR difference between plaintexts (default: 0x80 for toy, 0x40 for DES)
 
@@ -21,7 +21,7 @@ def generate_differential_pairs(cipher, num_pairs=100, delta=None):
         List of tuples: (plaintext, plaintext_prime, ciphertext, ciphertext_prime)
     """
     if delta is None:
-        if isinstance(cipher, ToyCipher):
+        if isinstance(cipher, DemoCipher):
             delta = 0x80
         elif isinstance(cipher, SimplifiedDES):
             delta = 0x40
@@ -66,9 +66,9 @@ def find_good_differential(cipher, max_pairs=500):
 
 if __name__ == "__main__":
     # Test with toy cipher
-    cipher = ToyCipher(key=0x3FF)  # 10-bit key
+    cipher = DemoCipher(key=0x3FF)  # 10-bit key
     pairs = generate_differential_pairs(cipher, num_pairs=10)
-    print(f"Generated {len(pairs)} differential pairs for ToyCipher")
+    print(f"Generated {len(pairs)} differential pairs for DemoCipher")
 
     delta, prob, _ = find_good_differential(cipher)
     print(f"Best differential: 0x{delta:02X} (probability: {prob:.2%})")

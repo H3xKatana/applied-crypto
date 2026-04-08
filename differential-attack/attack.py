@@ -1,6 +1,6 @@
 import numpy as np
 from collections import Counter
-from toy_cipher import ToyCipher
+from demo import DemoCipher
 from des import SimplifiedDES
 from pairs import generate_differential_pairs
 
@@ -20,14 +20,14 @@ def differential_attack(cipher, num_pairs=50):
     Returns:
         Recovered key (int)
     """
-    if isinstance(cipher, ToyCipher):
+    if isinstance(cipher, DemoCipher):
         delta = 0x80
     else:
         delta = 0x40
 
     pairs = generate_differential_pairs(cipher, num_pairs=num_pairs, delta=delta)
 
-    if isinstance(cipher, ToyCipher):
+    if isinstance(cipher, DemoCipher):
         return _differential_attack_toy(cipher, pairs, delta)
     else:
         return _attack_sdes(cipher, pairs, delta)
@@ -46,7 +46,7 @@ def _differential_attack_toy(cipher, pairs, delta):
     best_score = -1
 
     for key in range(1024):  # 10-bit key space
-        test_cipher = ToyCipher(key)
+        test_cipher = DemoCipher(key)
         score = 0
         for p, p_prime, c, c_prime in pairs:
             if test_cipher.encrypt(p) == c and test_cipher.encrypt(p_prime) == c_prime:
@@ -157,7 +157,7 @@ def measure_attack_effectiveness(cipher_class, key, num_trials=10, pair_counts=N
     Measure how many pairs needed for successful attack.
 
     Args:
-        cipher_class: Cipher class (ToyCipher or SimplifiedDES)
+        cipher_class: Cipher class (DemoCipher or SimplifiedDES)
         key: Key to test
         num_trials: Number of trials per pair count
         pair_counts: List of pair counts to test
@@ -201,14 +201,14 @@ if __name__ == "__main__":
     sys.path.insert(0, ".")
 
     test_key = 0x3FF
-    cipher = ToyCipher(test_key)
+    cipher = DemoCipher(test_key)
 
     print(f"Testing attack with key: 0x{test_key:03X}")
 
     for num_pairs in [10, 20, 50, 100]:
         recovered = differential_attack(cipher, num_pairs)
-        cipher_correct = ToyCipher(recovered)
-        cipher_test = ToyCipher(test_key)
+        cipher_correct = DemoCipher(recovered)
+        cipher_test = DemoCipher(test_key)
 
         valid = True
         for _ in range(10):

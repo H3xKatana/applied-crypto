@@ -9,7 +9,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from collections import Counter
-from toy_cipher import ToyCipher
+from demo import DemoCipher
 from des import SimplifiedDES
 from pairs import generate_differential_pairs, find_good_differential
 from attack import differential_attack, measure_attack_effectiveness
@@ -19,7 +19,7 @@ def plot_differential_distribution():
     """Show how input differences propagate to output differences."""
     fig, axes = plt.subplots(1, 3, figsize=(15, 5))
 
-    cipher = ToyCipher(key=0x3FF)
+    cipher = DemoCipher(key=0x3FF)
     deltas = [0x01, 0x40, 0x80]
 
     for idx, delta in enumerate(deltas):
@@ -35,7 +35,7 @@ def plot_differential_distribution():
         axes[idx].set_title(f"Input Δ = 0x{delta:02X}")
 
     plt.suptitle(
-        "Differential Distribution for ToyCipher", fontsize=14, fontweight="bold"
+        "Differential Distribution for DemoCipher", fontsize=14, fontweight="bold"
     )
     plt.tight_layout()
     plt.savefig("differential-dist.png", dpi=150, bbox_inches="tight")
@@ -50,7 +50,7 @@ def plot_attack_effectiveness():
     test_key = 0x1FF
     pair_counts = [5, 10, 15, 20, 30, 50, 100]
     results = measure_attack_effectiveness(
-        ToyCipher, test_key, num_trials=20, pair_counts=pair_counts
+        DemoCipher, test_key, num_trials=20, pair_counts=pair_counts
     )
 
     pairs_list = list(results.keys())
@@ -64,7 +64,7 @@ def plot_attack_effectiveness():
     ax.set_xlabel("Number of Plaintext Pairs", fontsize=12)
     ax.set_ylabel("Success Rate (%)", fontsize=12)
     ax.set_title(
-        "Differential Attack Effectiveness\n(ToyCipher, 10-bit key)",
+        "Differential Attack Effectiveness\n(DemoCipher, 10-bit key)",
         fontsize=14,
         fontweight="bold",
     )
@@ -84,7 +84,7 @@ def plot_differential_characteristic():
     fig, ax = plt.subplots(figsize=(12, 6))
 
     delta = 0x80
-    cipher = ToyCipher(key=0x3FF)
+    cipher = DemoCipher(key=0x3FF)
 
     np.random.seed(42)
     p = np.random.randint(0, 256)
@@ -101,7 +101,7 @@ def plot_differential_characteristic():
     bars = ax.bar(stages, values, color=colors, width=0.5)
     ax.set_ylabel("XOR Difference (hex)", fontsize=12)
     ax.set_title(
-        "Differential Characteristic\nToyCipher with Δ = 0x80",
+        "Differential Characteristic\nDemoCipher with Δ = 0x80",
         fontsize=14,
         fontweight="bold",
     )
@@ -127,12 +127,12 @@ def plot_key_recovery_demo():
     fig, axes = plt.subplots(2, 2, figsize=(12, 10))
 
     test_key = 0x2AB
-    cipher = ToyCipher(test_key)
+    cipher = DemoCipher(test_key)
 
     ax = axes[0, 0]
     key_scores = []
     for key in range(1024):
-        test_cipher = ToyCipher(key)
+        test_cipher = DemoCipher(key)
         score = sum(
             1
             for _ in range(50)
