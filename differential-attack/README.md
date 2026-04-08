@@ -116,15 +116,19 @@ results = measure_attack_effectiveness(ToyCipher, test_key, num_trials=10)
 
 ## Visualizations
 
+![Differential Distribution](differential-dist.png)
 ### differential-dist.png
 Shows how different input differences (0x01, 0x40, 0x80) propagate to output differences. The distribution shows which differences are more predictable.
 
+![Attack Success](attack-success.png)
 ### attack-success.png
 Plots success rate vs. number of plaintext pairs. Shows how many pairs needed for reliable key recovery.
 
+![Differential Characteristic](characteristic.png)
 ### characteristic.png
 Visualizes the differential characteristic - how the input difference transforms through the cipher rounds.
 
+![Attack Dashboard](attack-dashboard.png)
 ### attack-dashboard.png
 Complete analysis with:
 - Key search space visualization
