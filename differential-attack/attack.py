@@ -28,50 +28,126 @@ def differential_attack(cipher, num_pairs=50):
     pairs = generate_differential_pairs(cipher, num_pairs=num_pairs, delta=delta)
 
     if isinstance(cipher, ToyCipher):
-        return _attack_toy_cipher(cipher, pairs, delta)
+        return _differential_attack_toy(cipher, pairs, delta)
     else:
         return _attack_sdes(cipher, pairs, delta)
 
 
-def _attack_toy_cipher(cipher, pairs, delta):
-    """Attack toy cipher using differential cryptanalysis."""
+def _differential_attack_toy(cipher, pairs, delta):
+    """Differential attack on toy cipher using ciphertext matching.
 
-    best_key = None
-    best_count = 0
+    Key insight: For the correct key, BOTH encryptions will match.
+    Wrong keys will have fewer matches.
+    """
+    # Strategy: For each full key candidate, count how many pairs match
+    # The correct key should match all pairs
 
-    for key in range(1024):
+    best_key = 0
+    best_score = -1
+
+    for key in range(1024):  # 10-bit key space
         test_cipher = ToyCipher(key)
-        count = 0
+        score = 0
         for p, p_prime, c, c_prime in pairs:
-            if test_cipher.encrypt(p) == c:
-                count += 1
+            if test_cipher.encrypt(p) == c and test_cipher.encrypt(p_prime) == c_prime:
+                score += 1
 
-        if count > best_count:
-            best_count = count
+        if score > best_score:
+            best_score = score
             best_key = key
-            if count == len(pairs):
-                return best_key
 
     return best_key
 
 
 def _attack_sdes(cipher, pairs, delta):
-    """Attack simplified DES."""
-    best_key = None
-    best_count = 0
+    """
+    Attack SimplifiedDES using TRUE differential cryptanalysis.
+    """
+    E = [1, 2, 3, 4, 3, 4, 1, 2]
+    P = [3, 1, 4, 2]
+    S1 = [
+        [0x3, 0x8, 0xF, 0x1],
+        [0xA, 0x6, 0x9, 0xC],
+        [0x5, 0xB, 0x0, 0xD],
+        [0xE, 0x7, 0x2, 0x4],
+    ]
+    S2 = [
+        [0xF, 0x4, 0xC, 0x1],
+        [0x9, 0x6, 0xA, 0x3],
+        [0xB, 0x2, 0x0, 0xD],
+        [0x8, 0x7, 0xE, 0x5],
+    ]
 
-    for key in range(1024):
-        test_cipher = SimplifiedDES(key << 6)
-        count = 0
+    def expand(nibble):
+        result = 0
+        for i, e in enumerate(E):
+            if nibble & (1 << (e - 1)):
+                result |= 1 << i
+        return result
+
+    def sbox(data):
+        row = ((data >> 3) & 0x02) | (data & 0x01)
+        col = (data >> 1) & 0x03
+        out1 = S1[row][col]
+        out2 = S2[row][col]
+        return (out1 << 2) | out2
+
+    def pbox(data):
+        result = 0
+        for i, p in enumerate(P):
+            if data & (1 << (p - 1)):
+                result |= 1 << i
+        return result
+
+    def compute_f(right, round_key):
+        expanded = expand(right)
+        xored = (expanded ^ round_key) & 0x3F
+        sboxed = sbox(xored)
+        permuted = pbox(sboxed)
+        return permuted & 0x0F
+
+    best_k1 = None
+    best_k1_score = 0
+
+    for k1 in range(32):
+        score = 0
+        for p, p_prime, c, c_prime in pairs:
+            L = (p >> 4) & 0x0F
+            R = p & 0x0F
+            L_prime = (p_prime >> 4) & 0x0F
+            R_prime = p_prime & 0x0F
+
+            f_L = compute_f(L, k1)
+            f_L_prime = compute_f(L_prime, k1)
+
+            L1_diff = R ^ R_prime ^ (f_L ^ f_L_prime)
+            expected_L_diff = (delta >> 4) & 0x0F
+            if L1_diff == expected_L_diff:
+                score += 1
+
+        if score > best_k1_score:
+            best_k1_score = score
+            best_k1 = k1
+
+    best_key = None
+    best_key_score = 0
+
+    for full_key in range(65536):
+        k1 = (full_key >> 11) & 0x1F
+        k2 = (full_key >> 6) & 0x1F
+
+        if k1 != best_k1:
+            continue
+
+        test_cipher = SimplifiedDES(full_key)
+        score = 0
         for p, p_prime, c, c_prime in pairs:
             if test_cipher.encrypt(p) == c:
-                count += 1
+                score += 1
 
-        if count > best_count:
-            best_count = count
-            best_key = key << 6
-            if count >= len(pairs) * 0.9:
-                break
+        if score > best_key_score:
+            best_key_score = score
+            best_key = full_key
 
     return best_key
 
