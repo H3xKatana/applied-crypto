@@ -6,11 +6,11 @@ This script demonstrates the differential cryptanalysis attack step-by-step,
 showing exactly how the attack works and why it succeeds.
 
 Usage:
-    python3 showcase.py [cipher] [key]
+    python3 showcase.py [mode] [key] [message]
 
 Examples:
-    python3 showcase.py demo 0x3FF
-    python3 showcase.py des 0xCAFE
+    python3 showcase.py demo 0xFFFFF "Hello"
+    python3 showcase.py des 0xCAFE "Secret"
     python3 showcase.py all
 """
 
@@ -85,75 +85,86 @@ def print_progress_bar(current, total, prefix="", suffix=""):
         print()
 
 
-def explain_differential(cipher_class):
-    """Explain why certain differentials work."""
+def text_to_bytes(text):
+    """Convert text to list of byte values."""
+    return [ord(c) for c in text]
 
-    print_section("WHY DIFFERENTIAL ATTACK WORKS")
 
-    if cipher_class == DemoCipher:
-        print("""
-┌────────────────────────────────────────────────────────────────────────┐
-│                     FEISTEL CIPHER STRUCTURE                          │
-├────────────────────────────────────────────────────────────────────────┤
-│                                                                        │
-│   Plaintext (8 bits)  ──►  [L0|R0]                                    │
-│                              │                                          │
-│                              ▼                                          │
-│                     ┌──────► f(R0, K1) ──► XOR with L0                │
-│                     │       │                                          │
-│                     │       ▼                                          │
-│                     │    [L1|R1]                                       │
-│                     │       │                                          │
-│                     ▼       │                                          │
-│                     ┌──────► f(R1, K2) ──► XOR with L1                │
-│                     │       │                                          │
-│                     │       ▼                                          │
-│                     │    [L2|R2] = Ciphertext                         │
-│                     │                                                  │
-└────────────────────────────────────────────────────────────────────────┘
+def bytes_to_hex(byte_list):
+    """Convert list of bytes to hex string."""
+    return " ".join(f"{b:02X}" for b in byte_list)
 
-KEY INSIGHT:
-  With input difference ΔP = 0x80, we have:
-  
-  - ΔL0 = 0x08 (left half differs by 8)
-  - ΔR0 = 0x00 (right half SAME!)
-  
-  Since ΔR0 = 0, the f-function in round 1 sees SAME input!
-  The output difference depends only on the key XOR behavior.
-  
-  This creates a HIGH PROBABILITY characteristic:
-  - Correct key: predictable output difference
-  - Wrong keys: random output difference
-""")
 
-    elif cipher_class == SimplifiedDES:
-        print("""
-┌────────────────────────────────────────────────────────────────────────┐
-│                      SIMPLIFIED DES STRUCTURE                         │
-├────────────────────────────────────────────────────────────────────────┤
-│                                                                        │
-│   Plaintext (8 bits)  ──►  [L0|R0]                                    │
-│                              │                                          │
-│                              ▼  Round 1                                │
-│                     ┌──► expansion(4→8)                               │
-│                     │       │                                          │
-│                     │       ▼                                          │
-│                     │    XOR with K1                                   │
-│                     │       │                                          │
-│                     │       ▼                                          │
-│                     │    S-boxes (4x4 x 2)                            │
-│                     │       │                                          │
-│                     │       ▼                                          │
-│                     │    P-box permutation                            │
-│                     │       │                                          │
-│                     │       ▼                                          │
-│                     └──► XOR with L0 → L1, R stays                    │
-│                              │                                          │
-│                              ▼  Round 2 (same)                        │
-│                             [L2|R2] = Ciphertext                      │
-│                                                                        │
-└────────────────────────────────────────────────────────────────────────┘
-""")
+def encrypt_message(cipher, message):
+    """Encrypt a message and return ciphertext bytes."""
+    plaintext_bytes = text_to_bytes(message)
+    ciphertext_bytes = [cipher.encrypt(b) for b in plaintext_bytes]
+    return plaintext_bytes, ciphertext_bytes
+
+
+def decrypt_message(cipher, ciphertext_bytes):
+    """Decrypt ciphertext bytes back to text."""
+    plaintext_bytes = [cipher.decrypt(b) for b in ciphertext_bytes]
+    return "".join(chr(b) if 32 <= b < 127 else "?" for b in plaintext_bytes)
+
+
+def message_demo(cipher_class, key, message, name, key_bits):
+    """Demonstrate encryption and decryption of a real message."""
+
+    print_header(f"MESSAGE ENCRYPTION DEMO - {name}")
+
+    cipher = cipher_class(key)
+
+    print_step(0, "SETUP")
+    print_info("Cipher", cipher_class.__name__)
+    print_info("Key", format_key(key, key_bits))
+    print_info("Message", f'"{message}"')
+
+    # Step 1: Show plaintext
+    print_step(1, "PLAINTEXT REPRESENTATION")
+    plaintext_bytes = text_to_bytes(message)
+    print_info("Message Length", f"{len(message)} characters")
+    print_info("Plaintext Bytes (ASCII)", bytes_to_hex(plaintext_bytes))
+
+    # Show ASCII values
+    print(f"\n{Colors.CYAN}│   Character breakdown:{Colors.ENDC}")
+    for i, (char, byte) in enumerate(zip(message[:10], plaintext_bytes[:10])):
+        print(f"{Colors.CYAN}│      '{char}' → 0x{byte:02X} ({byte}){Colors.ENDC}")
+    if len(message) > 10:
+        print(f"{Colors.CYAN}│      ... ({len(message) - 10} more){Colors.ENDC}")
+
+    # Step 2: Encrypt
+    print_step(2, "ENCRYPTION")
+    _, ciphertext_bytes = encrypt_message(cipher, message)
+    print_info("Ciphertext Bytes", bytes_to_hex(ciphertext_bytes))
+
+    # Step 3: Show difference
+    print_step(3, "ENCRYPTION RESULT")
+    print(f"\n{Colors.CYAN}│   Before encryption:{Colors.ENDC}")
+    print(f"{Colors.CYAN}│   {message}{Colors.ENDC}")
+    print(f"\n{Colors.CYAN}│   After encryption (hex):{Colors.ENDC}")
+    print(f"{Colors.CYAN}│   {bytes_to_hex(ciphertext_bytes)}{Colors.ENDC}")
+
+    # Step 4: Decrypt with same key
+    print_step(4, "DECRYPTION (same key)")
+    decrypted = decrypt_message(cipher, ciphertext_bytes)
+    print_info("Decrypted Message", f'"{decrypted}"')
+
+    if decrypted == message:
+        print_success(f"Message decrypted successfully!")
+    else:
+        print_warning(f"Decryption mismatch!")
+
+    # Step 5: Try wrong key
+    print_step(5, "DECRYPTION (wrong key)")
+    wrong_key = (key + 1) % (2**key_bits)
+    wrong_cipher = cipher_class(wrong_key)
+    decrypted_wrong = decrypt_message(wrong_cipher, ciphertext_bytes)
+    print_info("Wrong Key", format_key(wrong_key, key_bits))
+    print_info("Decrypted Message", f'"{decrypted_wrong}"')
+    print_warning(f"Wrong key produces garbage!")
+
+    print()
 
 
 def attack_demo(cipher_class, key, name, key_bits):
@@ -261,7 +272,7 @@ def attack_demo(cipher_class, key, name, key_bits):
         if equivalent:
             print_warning(f"Equivalent key found!")
             print(
-                f"\n{Colors.CYAN}│   Original key: {format_key(true_key, key_bits)}{Colors.ENDC}"
+                f"{Colors.CYAN}│   Original key: {format_key(true_key, key_bits)}{Colors.ENDC}"
             )
             print(
                 f"{Colors.CYAN}│   Found key:    {format_key(best_key, key_bits)}{Colors.ENDC}"
@@ -269,6 +280,47 @@ def attack_demo(cipher_class, key, name, key_bits):
             print(f"{Colors.CYAN}│   Both produce identical ciphertexts!{Colors.ENDC}")
         else:
             print_warning(f"Could not find exact key")
+
+
+def explain_differential(cipher_class):
+    """Explain why certain differentials work."""
+
+    print_section("WHY DIFFERENTIAL ATTACK WORKS")
+
+    print("""
+┌────────────────────────────────────────────────────────────────────────┐
+│                     FEISTEL CIPHER STRUCTURE                          │
+├────────────────────────────────────────────────────────────────────────┤
+│                                                                        │
+│   Plaintext (8 bits)  ──►  [L0|R0]                                    │
+│                              │                                          │
+│                              ▼                                          │
+│                     ┌──────► f(R0, K1) ──► XOR with L0                │
+│                     │       │                                          │
+│                     │       ▼                                          │
+│                     │    [L1|R1]                                       │
+│                     │       │                                          │
+│                     ▼       │                                          │
+│                     ┌──────► f(R1, K2) ──► XOR with L1                │
+│                     │       │                                          │
+│                     │       ▼                                          │
+│                     │    [L2|R2] = Ciphertext                         │
+│                     │                                                  │
+└────────────────────────────────────────────────────────────────────────┘
+
+KEY INSIGHT:
+  With input difference ΔP = 0x80, we have:
+  
+  - ΔL0 = 0x08 (left half differs by 8)
+  - ΔR0 = 0x00 (right half SAME!)
+  
+  Since ΔR0 = 0, the f-function in round 1 sees SAME input!
+  The output difference depends only on the key XOR behavior.
+  
+  This creates a HIGH PROBABILITY characteristic:
+  - Correct key: predictable output difference
+  - Wrong keys: random output difference
+""")
 
 
 def show_theory():
@@ -377,9 +429,9 @@ def show_faq():
         (
             "Difference from brute force?",
             """Same complexity (test all keys), but smarter.
-            Uses statistics to filter - correct key stands out.
-            For small keys, brute force is actually faster!
-            Value is in understanding the principle.""",
+Uses statistics to filter - correct key stands out.
+For small keys, brute force is actually faster!
+Value is in understanding the principle.""",
         ),
     ]
 
@@ -409,22 +461,32 @@ def main():
     # Parse arguments
     if len(sys.argv) < 2 or sys.argv[1] == "all":
         # Run full demo
+        # Message demo first
+        message_demo(DemoCipher, 0xFFFFF, "Crypto", "DEMO CIPHER", 20)
+        time.sleep(1)
+        # Then attack
         attack_demo(DemoCipher, 0xFFFFF, "DEMO CIPHER (20-bit key, 4 rounds)", 20)
         time.sleep(1)
         show_complexity()
         show_faq()
     elif sys.argv[1] == "demo":
         key = int(sys.argv[2], 16) if len(sys.argv) > 2 else 0xFFFFF
+        message = sys.argv[3] if len(sys.argv) > 3 else "Hello"
+        message_demo(DemoCipher, key, message, "DEMO CIPHER", 20)
+        time.sleep(1)
         attack_demo(DemoCipher, key, "DEMO CIPHER", 20)
     elif sys.argv[1] == "des":
         key = int(sys.argv[2], 16) if len(sys.argv) > 2 else 0xCAFE
+        message = sys.argv[3] if len(sys.argv) > 3 else "Secret"
         explain_differential(SimplifiedDES)
+        message_demo(SimplifiedDES, key, message, "SIMPLIFIED DES", 16)
+        time.sleep(1)
         attack_demo(SimplifiedDES, key, "SIMPLIFIED DES (16-bit key)", 16)
     else:
-        print(f"Usage: python3 showcase.py [demo|des|all] [key]")
+        print(f"Usage: python3 showcase.py [demo|des|all] [key] [message]")
         print(f"Examples:")
-        print(f"  python3 showcase.py demo 0x3FF")
-        print(f"  python3 showcase.py des 0xCAFE")
+        print(f'  python3 showcase.py demo 0xFFFFF "Hello"')
+        print(f'  python3 showcase.py des 0xCAFE "Secret"')
         print(f"  python3 showcase.py all")
 
 
