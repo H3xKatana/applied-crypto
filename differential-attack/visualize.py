@@ -38,7 +38,7 @@ def plot_differential_distribution():
         "Differential Distribution for DemoCipher", fontsize=14, fontweight="bold"
     )
     plt.tight_layout()
-    plt.savefig("differential-dist.png", dpi=150, bbox_inches="tight")
+    plt.savefig("images/differential-dist.png", dpi=150, bbox_inches="tight")
     plt.close()
     print("Created: differential-dist.png")
 
@@ -74,7 +74,7 @@ def plot_attack_effectiveness():
     for x, y in zip(pairs_list, success_rates):
         ax.annotate(f"{y:.0f}%", (x, y + 3), ha="center", fontsize=10)
 
-    plt.savefig("attack-success.png", dpi=150, bbox_inches="tight")
+    plt.savefig("images/attack-success.png", dpi=150, bbox_inches="tight")
     plt.close()
     print("Created: attack-success.png")
 
@@ -117,20 +117,22 @@ def plot_differential_characteristic():
         )
 
     ax.set_ylim(0, 150)
-    plt.savefig("characteristic.png", dpi=150, bbox_inches="tight")
+    plt.savefig("images/characteristic.png", dpi=150, bbox_inches="tight")
     plt.close()
     print("Created: characteristic.png")
 
 
 def plot_key_recovery_demo():
     """Show step-by-step key recovery."""
-    fig, axes = plt.subplots(2, 2, figsize=(12, 10))
+    fig, axes = plt.subplots(2, 2, figsize=(14, 12))
 
     test_key = 0x2AB
     cipher = DemoCipher(test_key)
 
+    # Plot 1: Key search space
     ax = axes[0, 0]
     key_scores = []
+    np.random.seed(42)
     for key in range(1024):
         test_cipher = DemoCipher(key)
         score = sum(
@@ -141,13 +143,15 @@ def plot_key_recovery_demo():
         )
         key_scores.append(score)
 
-    ax.plot(range(1024), key_scores, "b-", alpha=0.5)
+    ax.plot(range(1024), key_scores, "b-", alpha=0.5, linewidth=0.8)
     ax.axvline(x=test_key, color="r", linewidth=2, label=f"True key: 0x{test_key:03X}")
-    ax.set_xlabel("Key Candidate")
-    ax.set_ylabel("Match Score")
-    ax.set_title("Key Search Space")
-    ax.legend()
+    ax.set_xlabel("Key Candidate", fontsize=11)
+    ax.set_ylabel("Match Score", fontsize=11)
+    ax.set_title("Key Search Space Analysis", fontsize=12, fontweight="bold")
+    ax.legend(loc="upper right")
+    ax.grid(True, alpha=0.3)
 
+    # Plot 2: S-box differential table
     ax = axes[0, 1]
     SBOX = [12, 5, 2, 15, 0, 14, 4, 1, 9, 8, 13, 6, 11, 10, 3, 7]
     diff_table = np.zeros((16, 16))
@@ -155,42 +159,63 @@ def plot_key_recovery_demo():
         for j in range(16):
             diff_table[i][j] = SBOX[i] ^ SBOX[j]
 
-    im = ax.imshow(diff_table, cmap="YlOrRd")
-    ax.set_xlabel("Input XOR")
-    ax.set_ylabel("Output XOR")
-    ax.set_title("S-Box Differential Table")
-    plt.colorbar(im, ax=ax)
+    im = ax.imshow(diff_table, cmap="YlOrRd", aspect="auto")
+    ax.set_xlabel("Input XOR", fontsize=11)
+    ax.set_ylabel("Output XOR", fontsize=11)
+    ax.set_title(
+        "S-Box Differential Distribution Table", fontsize=12, fontweight="bold"
+    )
+    cbar = plt.colorbar(im, ax=ax)
+    cbar.set_label("XOR Value", fontsize=10)
 
+    # Plot 3: Output difference histogram
     ax = axes[1, 0]
     pairs = generate_differential_pairs(cipher, num_pairs=200, delta=0x80)
     output_diffs = [c ^ c_prime for _, _, c, c_prime in pairs]
-    ax.hist(output_diffs, bins=16, color="teal", alpha=0.7, edgecolor="black")
-    ax.set_xlabel("Output XOR Difference")
-    ax.set_ylabel("Count")
-    ax.set_title("Output Difference Distribution (200 pairs)")
+    ax.hist(output_diffs, bins=32, color="teal", alpha=0.7, edgecolor="black")
+    ax.set_xlabel("Output XOR Difference", fontsize=11)
+    ax.set_ylabel("Frequency", fontsize=11)
+    ax.set_title(
+        "Output Difference Distribution (200 pairs, ΔP=0x80)",
+        fontsize=12,
+        fontweight="bold",
+    )
+    ax.grid(True, alpha=0.3)
 
+    # Plot 4: Complexity comparison
     ax = axes[1, 1]
-    complexities = [(32, "Subkey K1"), (32, "Subkey K2"), (1024, "Full brute force")]
+    complexities = [
+        (32, "Subkey K1\n(5 bits)"),
+        (32, "Subkey K2\n(5 bits)"),
+        (1024, "Full Brute Force\n(10 bits)"),
+    ]
     methods, complexity = zip(*complexities)
-    bars = ax.bar(methods, complexity, color=["#2ecc71", "#3498db", "#e74c3c"])
-    ax.set_ylabel("Key Space Size")
-    ax.set_title("Attack Complexity Comparison")
+    colors = ["#2ecc71", "#3498db", "#e74c3c"]
+    bars = ax.bar(methods, complexity, color=colors, edgecolor="black", linewidth=1.5)
+    ax.set_ylabel("Key Space Size", fontsize=11)
+    ax.set_title("Attack Complexity Comparison", fontsize=12, fontweight="bold")
+    ax.set_yscale("log")
     for bar, c in zip(bars, complexity):
         ax.text(
             bar.get_x() + bar.get_width() / 2,
-            bar.get_height() + 10,
+            bar.get_height() * 1.1,
             str(c),
             ha="center",
-            fontsize=11,
+            fontsize=12,
+            fontweight="bold",
         )
+    ax.grid(True, alpha=0.3, axis="y")
 
     plt.suptitle(
-        "Differential Attack Analysis Dashboard", fontsize=16, fontweight="bold", y=1.02
+        "Differential Attack Analysis Dashboard",
+        fontsize=16,
+        fontweight="bold",
+        y=0.995,
     )
-    plt.tight_layout()
-    plt.savefig("attack-dashboard.png", dpi=150, bbox_inches="tight")
+    plt.tight_layout(rect=[0, 0, 1, 0.98])
+    plt.savefig("images/attack-dashboard.png", dpi=150, bbox_inches="tight")
     plt.close()
-    print("Created: attack-dashboard.png")
+    print("Created: images/attack-dashboard.png")
 
 
 if __name__ == "__main__":
